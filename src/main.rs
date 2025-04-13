@@ -1,17 +1,19 @@
-fn welcome_message() -> String {
-    "Hello, world!".into()
-}
+mod health;
 
-fn main() {
-    println!("{}", welcome_message());
-}
+use actix_web::{
+    App, HttpServer,
+    middleware::{NormalizePath, TrailingSlash},
+};
+use health::scopes::health_scope;
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_welcome_message() {
-        assert_eq!(welcome_message(), "Hello, world!".to_string());
-    }
+#[actix_web::main]
+async fn main() -> std::io::Result<()> {
+    HttpServer::new(|| {
+        App::new()
+            .wrap(NormalizePath::new(TrailingSlash::Always))
+            .service(health_scope())
+    })
+    .bind(("127.0.0.1", 8080))?
+    .run()
+    .await
 }
