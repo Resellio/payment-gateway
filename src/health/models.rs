@@ -1,14 +1,16 @@
 use actix_web::{HttpResponse, Responder, body::BoxBody, http::header::ContentType};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize)]
 pub struct HealthCheckResponse {
-    status: &'static str,
+    pub(super) status: String,
 }
 
 impl HealthCheckResponse {
     pub fn ok() -> Self {
-        Self { status: "ok" }
+        Self {
+            status: "ok".into(),
+        }
     }
 }
 
