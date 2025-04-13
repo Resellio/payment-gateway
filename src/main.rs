@@ -1,5 +1,6 @@
 mod common;
 mod health;
+mod routes;
 
 use actix_cors::Cors;
 use actix_web::{
@@ -8,7 +9,6 @@ use actix_web::{
 };
 use common::config::Config;
 use env_logger::Env;
-use health::scopes::health_scope;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -23,7 +23,7 @@ async fn main() -> std::io::Result<()> {
             .wrap(cors)
             .wrap(Logger::default())
             .wrap(Logger::new("%a %{User-Agent}i"))
-            .service(health_scope())
+            .configure(routes::config)
     })
     .bind(("127.0.0.1", config.port))?
     .run()
