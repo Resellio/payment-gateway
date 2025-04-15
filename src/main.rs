@@ -1,5 +1,6 @@
 mod common;
 mod health;
+mod payments;
 mod routes;
 
 use actix_cors::Cors;
