@@ -1,17 +1,31 @@
-fn welcome_message() -> String {
-    "Hello, world!".into()
-}
+mod common;
+mod health;
+mod routes;
 
-fn main() {
-    println!("{}", welcome_message());
-}
+use actix_cors::Cors;
+use actix_web::{
+    App, HttpServer,
+    middleware::{Logger, NormalizePath, TrailingSlash},
+};
+use common::config::Config;
+use env_logger::Env;
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_welcome_message() {
-        assert_eq!(welcome_message(), "Hello, world!".to_string());
-    }
+#[actix_web::main]
+async fn main() -> std::io::Result<()> {
+    let config = Config::load_from_env();
+    env_logger::init_from_env(Env::default().default_filter_or("info"));
+    HttpServer::new(move || {
+        let cors = Cors::default()
+            .allowed_origin(&config.api_origin)
+            .allowed_methods(vec!["GET"]);
+        App::new()
+            .wrap(NormalizePath::new(TrailingSlash::Always))
+            .wrap(cors)
+            .wrap(Logger::default())
+            .wrap(Logger::new("%a %{User-Agent}i"))
+            .configure(routes::config)
+    })
+    .bind(("127.0.0.1", config.port))?
+    .run()
+    .await
 }
