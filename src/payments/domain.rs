@@ -20,6 +20,11 @@ pub struct Payment {
     pub(super) cvv: [char; 3],
 }
 
+pub fn process_payment(payment: &Payment) -> AppResult<String> {
+    todo!();
+    Ok("transaction_id".into())
+}
+
 impl TryFrom<ProcessPaymentRequest> for Payment {
     type Error = ErrorResponse;
 
