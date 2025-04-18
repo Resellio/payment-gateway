@@ -1,4 +1,7 @@
+use std::fmt::Display;
+
 use actix_web::http::StatusCode;
+use chrono::{Datelike, Local};
 
 use crate::common::models::{AppResult, ErrorResponse};
 
@@ -8,6 +11,15 @@ use super::models::ProcessPaymentRequest;
 pub enum Currency {
     Pln,
     Usd,
+}
+
+impl Display for Currency {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Currency::Pln => write!(f, "PLN"),
+            Currency::Usd => write!(f, "USD"),
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -21,8 +33,42 @@ pub struct Payment {
 }
 
 pub fn process_payment(payment: &Payment) -> AppResult<String> {
-    todo!();
-    Ok("transaction_id".into())
+    if payment.amount <= 0.0 {
+        return Err(ErrorResponse::new(
+            "Invalid amount".into(),
+            StatusCode::INTERNAL_SERVER_ERROR,
+        ));
+    }
+
+    let now = Local::now();
+    if now.year() as u16 > payment.card_expiry_year
+        || (now.year() as u16 == payment.card_expiry_year
+            && now.month() as u8 > payment.card_expiry_month)
+    {
+        return Err(ErrorResponse::new(
+            "Card expired".into(),
+            StatusCode::INTERNAL_SERVER_ERROR,
+        ));
+    }
+
+    let transaction_id = format!(
+        "{}-{}-{}",
+        &payment.card_number.chars().next().unwrap_or('P'),
+        payment.currency,
+        payment.cvv[1]
+    );
+
+    Ok(transaction_id)
+}
+
+pub fn check_for_potential_error() -> AppResult<()> {
+    match rand::random_bool(0.1) {
+        true => Err(ErrorResponse::new(
+            "Unexpected server error".into(),
+            StatusCode::INTERNAL_SERVER_ERROR,
+        )),
+        false => Ok(()),
+    }
 }
 
 impl TryFrom<ProcessPaymentRequest> for Payment {
@@ -97,6 +143,7 @@ impl TryFrom<ProcessPaymentRequest> for Payment {
 mod tests {
     use super::*;
     use actix_web::http::StatusCode;
+    use chrono::{Datelike, Local};
 
     fn valid_request() -> ProcessPaymentRequest {
         ProcessPaymentRequest {
@@ -202,5 +249,74 @@ mod tests {
         let result = Payment::try_from(request);
         assert!(result.is_err());
         assert_eq!(result.unwrap_err().error, "Invalid cvv");
+    }
+
+    fn valid_payment() -> Payment {
+        let now = Local::now();
+        Payment {
+            amount: 100.0,
+            card_number: "1234567812345678".to_string(),
+            card_expiry_year: now.year() as u16 + 1,
+            card_expiry_month: now.month() as u8,
+            currency: Currency::Usd,
+            cvv: ['1', '2', '3'],
+        }
+    }
+
+    #[test]
+    fn test_process_payment_valid_payment_returns_transaction_id() {
+        let payment = valid_payment();
+        let result = process_payment(&payment);
+
+        assert!(result.is_ok());
+        let id = result.unwrap();
+        assert_eq!(id, "1-USD-2");
+    }
+
+    #[test]
+    fn test_process_payment_invalid_amount_returns_error() {
+        let mut payment = valid_payment();
+        payment.amount = 0.0;
+
+        let result = process_payment(&payment);
+        assert!(result.is_err());
+        let err = result.unwrap_err().to_string();
+        assert!(err.contains("Invalid amount"));
+    }
+
+    #[test]
+    fn test_process_payment_expired_card_returns_error() {
+        let mut payment = valid_payment();
+        payment.card_expiry_year = 2000;
+        payment.card_expiry_month = 1;
+
+        let result = process_payment(&payment);
+        assert!(result.is_err());
+        let err = result.unwrap_err().to_string();
+        assert!(err.contains("Card expired"));
+    }
+
+    #[test]
+    fn test_process_payment_expired_this_month_returns_error() {
+        let now = Local::now();
+        let mut payment = valid_payment();
+        payment.card_expiry_year = now.year() as u16;
+        payment.card_expiry_month = now.month() as u8 - 1;
+
+        let result = process_payment(&payment);
+        assert!(result.is_err());
+        let err = result.unwrap_err().to_string();
+        assert!(err.contains("Card expired"));
+    }
+
+    #[test]
+    fn test_process_payment_valid_card_edge_case_current_month() {
+        let now = Local::now();
+        let mut payment = valid_payment();
+        payment.card_expiry_year = now.year() as u16;
+        payment.card_expiry_month = now.month() as u8;
+
+        let result = process_payment(&payment);
+        assert!(result.is_ok());
     }
 }
