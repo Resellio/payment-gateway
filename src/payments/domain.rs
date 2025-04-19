@@ -2,6 +2,7 @@ use std::fmt::Display;
 
 use actix_web::http::StatusCode;
 use chrono::{Datelike, Local};
+use rand::{Rng, distr::Alphanumeric};
 
 use crate::common::models::{AppResult, ErrorResponse};
 
@@ -51,11 +52,18 @@ pub fn process_payment(payment: &Payment) -> AppResult<String> {
         ));
     }
 
+    const RANDOM_PART_LEN: usize = 10;
+    let mut rng = rand::rng();
+    let random_letters: String = (0..RANDOM_PART_LEN)
+        .map(|_| rng.sample(Alphanumeric) as char)
+        .collect();
+
     let transaction_id = format!(
-        "{}-{}-{}",
+        "{}-{}-{}-{}",
         &payment.card_number.chars().next().unwrap_or('P'),
         payment.currency,
-        payment.cvv[1]
+        payment.cvv[1],
+        random_letters
     );
 
     Ok(transaction_id)
@@ -270,7 +278,7 @@ mod tests {
 
         assert!(result.is_ok());
         let id = result.unwrap();
-        assert_eq!(id, "1-USD-2");
+        assert!(id.starts_with("1-USD-2"));
     }
 
     #[test]
