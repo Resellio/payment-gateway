@@ -107,7 +107,7 @@ impl TryFrom<ProcessPaymentRequest> for Payment {
         })?;
         let card_expiry_year = card_expiry_year_str.parse::<u16>().map_err(|_| {
             ErrorResponse::new("Invalid card expiry year".into(), StatusCode::BAD_REQUEST)
-        })?;
+        })? + 2000;
         if value.cvv.len() != 3 {
             return Err(ErrorResponse::new(
                 "Invalid cvv length".into(),
@@ -150,7 +150,7 @@ mod tests {
             amount: 100.0,
             currency: "PLN".to_string(),
             card_number: "1234567890123".to_string(),
-            card_expiry: "12/2025".to_string(),
+            card_expiry: "12/25".to_string(),
             cvv: "123".to_string(),
             force_error: false,
         }
