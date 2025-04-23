@@ -26,7 +26,7 @@ async fn main() -> std::io::Result<()> {
             .wrap(Logger::new("%a %{User-Agent}i"))
             .configure(routes::config)
     })
-    .bind(("127.0.0.1", config.port))?
+    .bind(("0.0.0.0", config.port))?
     .run()
     .await
 }
