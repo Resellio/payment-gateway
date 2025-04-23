@@ -1,0 +1,94 @@
+openapi: 3.0.3
+info:
+  title: Payment Gateway API
+  version: 1.0.0
+  description: >
+    A mock payment gateway for testing purposes.
+
+paths:
+  /health:
+    get:
+      summary: Check gateway status
+      responses:
+        '200':
+          description: Service is up
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+        '500':
+          description: Service is down
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: error
+
+  /payments:
+    post:
+      summary: Process a payment
+      description: >
+        Processes a payment and randomly returns success or failure.
+        Use `force_error=true` to force an error for testing.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - amount
+                - currency
+                - card_number
+                - card_expiry
+              properties:
+                amount:
+                  type: number
+                  format: float
+                  example: 100.00
+                currency:
+                  type: string
+                  example: USD
+                card_number:
+                  type: string
+                  example: '4111111111111111'
+                card_expiry:
+                  type: string
+                  example: '12/27'
+                cvv:
+                  type: string
+                  example: '123'
+                force_error:
+                  type: boolean
+                  example: false
+      responses:
+        '200':
+          description: Payment accepted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  transaction_id:
+                    type: string
+                    example: trxn_abc123
+                  status:
+                    type: string
+                    example: success
+        '402':
+          description: Payment failed (simulated error)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: Payment declined
